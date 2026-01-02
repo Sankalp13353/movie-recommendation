@@ -1,18 +1,46 @@
-const API_KEY = "fd02adbd85f122a5a9ec0ed1f4ea0b63";
-const BASE_URL = "https://api.themoviedb.org/3";
+const BASE_URL = "https://api.tvmaze.com";
+
+const fetchWithTimeout = async (url, options = {}, timeout = 10000) => {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeout);
+
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal
+    });
+    return response;
+  } finally {
+    clearTimeout(id);
+  }
+};
 
 export const getPopularMovies = async () => {
-  const response = await fetch(`${BASE_URL}/movie/popular?api_key=${API_KEY}`);
+  const response = await fetchWithTimeout(`${BASE_URL}/shows`);
+  if (!response.ok) {
+    throw new Error('Failed to fetch movies');
+  }
   const data = await response.json();
-  return data.results;
+  return data.map(show => ({
+    id: show.id,
+    title: show.name,
+    poster_path: show.image?.medium,
+    release_date: show.premiered
+  }));
 };
 
 export const searchMovies = async (query) => {
-  const response = await fetch(
-    `${BASE_URL}/search/movie?api_key=${API_KEY}&query=${encodeURIComponent(
-      query
-    )}`
+  const response = await fetchWithTimeout(
+    `${BASE_URL}/search/shows?q=${encodeURIComponent(query)}`
   );
+  if (!response.ok) {
+    throw new Error('Failed to search movies');
+  }
   const data = await response.json();
-  return data.results;
+  return data.map(item => ({
+    id: item.show.id,
+    title: item.show.name,
+    poster_path: item.show.image?.medium,
+    release_date: item.show.premiered
+  }));
 };
